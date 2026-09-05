@@ -5,6 +5,7 @@ import { EvidenceFirstCard } from '../components/EvidenceFirstCard'
 import { LabTrendChart } from '../components/LabTrendChart'
 import { PatientOverview } from '../components/PatientOverview'
 import { RecentReports } from '../components/RecentReports'
+import { ReportDetailsPanel } from '../components/ReportDetailsPanel'
 import { StatCards } from '../components/StatCards'
 import { UploadNotice } from '../components/UploadNotice'
 import { VerificationQueue } from '../components/VerificationQueue'
@@ -12,6 +13,8 @@ import { useDashboardData } from '../hooks/useDashboardData'
 
 export function Dashboard() {
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [reportPanelOpen, setReportPanelOpen] = useState(false)
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null)
   const {
     connectionStatus,
     isLive,
@@ -25,6 +28,14 @@ export function Dashboard() {
     refreshReports,
     selectPatient,
   } = useDashboardData()
+
+  const selectedReport =
+    selectedReportId != null ? reports.find((report) => report.id === selectedReportId) ?? null : null
+
+  const closeReportPanel = () => {
+    setReportPanelOpen(false)
+    setSelectedReportId(null)
+  }
 
   const loadingAny = loadingPatients || loadingDetails
 
@@ -51,7 +62,10 @@ export function Dashboard() {
           patients={patients}
           selectedPatient={selectedPatient}
           reports={reports}
-          onSelectPatient={selectPatient}
+          onSelectPatient={(id) => {
+            closeReportPanel()
+            void selectPatient(id)
+          }}
         />
         <LabTrendChart />
       </div>
@@ -61,6 +75,15 @@ export function Dashboard() {
           loading={loadingAny}
           patientCode={selectedPatient?.patient_code}
           reports={reports}
+          selectedReportId={selectedReportId}
+          onSelectReport={(report) => {
+            setSelectedReportId(report.id)
+            setReportPanelOpen(true)
+          }}
+          onSelectDemoReport={() => {
+            setSelectedReportId(null)
+            setReportPanelOpen(true)
+          }}
         />
         <VerificationQueue />
       </div>
@@ -71,6 +94,15 @@ export function Dashboard() {
         selectedPatient={selectedPatient}
         isLive={isLive}
         onUploadSuccess={refreshReports}
+      />
+      <ReportDetailsPanel
+        key={reportPanelOpen ? `report-${selectedReportId ?? 'demo'}` : 'closed'}
+        open={reportPanelOpen}
+        report={isLive ? selectedReport : null}
+        isLive={isLive}
+        patientCode={selectedPatient?.patient_code}
+        onClose={closeReportPanel}
+        onProcessed={refreshReports}
       />
     </div>
   )

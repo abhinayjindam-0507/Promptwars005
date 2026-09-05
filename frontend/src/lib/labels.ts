@@ -55,3 +55,33 @@ export function mapProcessingStatusToVerification(status?: string | null): Verif
       return 'pending_review'
   }
 }
+
+export function processingStatusLabel(status?: string | null): string {
+  switch (status) {
+    case 'COMPLETED':
+      return 'Indexed'
+    case 'PROCESSING':
+      return 'Processing'
+    case 'FAILED':
+      return 'Failed'
+    case 'PENDING':
+      return 'Pending'
+    default:
+      return status || 'Unknown'
+  }
+}
+
+export function extractionStatusLabel(status?: string | null): string {
+  switch (status) {
+    case 'TEXT_EXTRACTED':
+      return 'Text extracted'
+    case 'OCR_REQUIRED':
+      return 'OCR required'
+    case 'AI_EXTRACTION_COMPLETED':
+      return 'AI extraction completed'
+    case 'PENDING':
+      return 'Extraction pending'
+    default:
+      return status || 'Unknown'
+  }
+}

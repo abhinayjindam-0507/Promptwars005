@@ -115,3 +115,10 @@ class ReportProcessResponse(BaseModel):
     provenance_flagged_count: int
     lab_results: List[LabResultResponse]
     message: str
+
+
+class VerificationRequest(BaseModel):
+    action: str = Field(..., description="Verification action: CONFIRMED, EDITED, FLAGGED, REJECTED, OVERRIDDEN")
+    verified_value: Optional[str] = Field(None, description="Corrected value if action is EDITED")
+    verified_by: Optional[str] = Field("Reviewing Clinician", description="Clinician or reviewer identifier")
+    notes: Optional[str] = Field(None, description="Optional clinical verification note")

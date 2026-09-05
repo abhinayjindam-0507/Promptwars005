@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ActivityTimeline } from '../components/ActivityTimeline'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { EvidenceFirstCard } from '../components/EvidenceFirstCard'
@@ -21,6 +21,7 @@ export function Dashboard() {
     patients,
     selectedPatient,
     reports,
+    patientLabResults,
     loadingPatients,
     loadingDetails,
     error,
@@ -36,6 +37,36 @@ export function Dashboard() {
     setReportPanelOpen(false)
     setSelectedReportId(null)
   }
+
+  // Calculate pending verification and conflict counts across patient lab results
+  const { pendingCount, conflictCount } = useMemo(() => {
+    if (!isLive || !patientLabResults.length) {
+      return { pendingCount: undefined, conflictCount: 0 }
+    }
+
+    const pending = patientLabResults.filter(
+      (r) => r.verification_status === 'UNVERIFIED'
+    ).length
+
+    // Detect distinct analyte discrepancies across records
+    const resultsByTest = new Map<string, string[]>()
+    patientLabResults.forEach((r) => {
+      const key = r.test_name.trim().toLowerCase()
+      const vals = resultsByTest.get(key) || []
+      vals.push(r.value.trim().toLowerCase())
+      resultsByTest.set(key, vals)
+    })
+
+    let conflicts = 0
+    resultsByTest.forEach((vals) => {
+      const uniqueVals = new Set(vals)
+      if (uniqueVals.size > 1) {
+        conflicts++
+      }
+    })
+
+    return { pendingCount: pending, conflictCount: conflicts }
+  }, [isLive, patientLabResults])
 
   const loadingAny = loadingPatients || loadingDetails
 
@@ -53,6 +84,8 @@ export function Dashboard() {
         isLive={isLive}
         patientCount={patients.length}
         reportCount={reports.length}
+        pendingCount={pendingCount}
+        conflictCount={conflictCount}
       />
       <EvidenceFirstCard />
       <div className="grid gap-5 lg:grid-cols-2">
@@ -67,7 +100,11 @@ export function Dashboard() {
             void selectPatient(id)
           }}
         />
-        <LabTrendChart />
+        <LabTrendChart
+          isLive={isLive}
+          patientLabResults={patientLabResults}
+          reports={reports}
+        />
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <RecentReports
@@ -85,7 +122,16 @@ export function Dashboard() {
             setReportPanelOpen(true)
           }}
         />
-        <VerificationQueue />
+        <VerificationQueue
+          isLive={isLive}
+          patientLabResults={patientLabResults}
+          reports={reports}
+          patientCode={selectedPatient?.patient_code}
+          onSelectReportId={(reportId) => {
+            setSelectedReportId(reportId)
+            setReportPanelOpen(true)
+          }}
+        />
       </div>
       <ActivityTimeline />
       <UploadNotice

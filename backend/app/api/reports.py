@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.lab_result import LabResult
+from app.models.lab_result import LabResult, VerificationStatus
 from app.models.patient import Patient
 from app.models.report import ProcessingStatus, Report
+from app.models.verification import VerificationAction, VerificationRecord
 from app.schemas.report import (
     LabResultResponse,
     ReportCreate,
@@ -16,6 +17,7 @@ from app.schemas.report import (
     ReportResponse,
     ReportStatusUpdate,
     ReportUploadResponse,
+    VerificationRequest,
 )
 from app.services.extraction_service import (
     EmptyDocumentError,
@@ -370,3 +372,92 @@ def get_report_lab_results(
     ).scalars().all()
 
     return list(results)
+
+
+@router.get(
+    "/patients/{patient_id}/lab-results",
+    response_model=List[LabResultResponse],
+    status_code=status.HTTP_200_OK,
+)
+def get_patient_lab_results(
+    patient_id: int,
+    db: Session = Depends(get_db),
+) -> List[LabResult]:
+    """Retrieve all structured clinical lab results across all reports for a patient."""
+    patient = db.execute(
+        select(Patient).where(Patient.id == patient_id)
+    ).scalar_one_or_none()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient with ID {patient_id} not found.",
+        )
+
+    results = db.execute(
+        select(LabResult)
+        .where(LabResult.patient_id == patient_id)
+        .order_by(LabResult.test_date.desc().nulls_last(), LabResult.id.desc())
+    ).scalars().all()
+
+    return list(results)
+
+
+@router.post(
+    "/lab-results/{result_id}/verify",
+    response_model=LabResultResponse,
+    status_code=status.HTTP_200_OK,
+)
+def verify_lab_result(
+    result_id: int,
+    request: VerificationRequest,
+    db: Session = Depends(get_db),
+) -> LabResult:
+    """Perform human verification, editing, flagging, or rejection on an AI-extracted lab result."""
+    result = db.execute(
+        select(LabResult).where(LabResult.id == result_id)
+    ).scalar_one_or_none()
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lab result with ID {result_id} not found.",
+        )
+
+    action_str = request.action.upper()
+    original_val = result.value
+    verified_val = request.verified_value.strip() if request.verified_value else original_val
+
+    if action_str in ("CONFIRMED", "VERIFIED"):
+        result.verification_status = VerificationStatus.VERIFIED
+        act_enum = VerificationAction.CONFIRMED
+    elif action_str in ("EDITED", "CORRECTED"):
+        result.verification_status = VerificationStatus.VERIFIED
+        result.value = verified_val
+        act_enum = VerificationAction.EDITED
+    elif action_str in ("FLAGGED", "OVERRIDDEN"):
+        result.verification_status = VerificationStatus.FLAGGED
+        act_enum = VerificationAction.OVERRIDDEN
+    elif action_str in ("REJECTED", "DISMISSED"):
+        result.verification_status = VerificationStatus.REJECTED
+        act_enum = VerificationAction.REJECTED
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unsupported verification action '{request.action}'.",
+        )
+
+    if request.notes:
+        note_text = f"[Verification Note]: {request.notes}"
+        result.observation = f"{result.observation}\n{note_text}" if result.observation else note_text
+
+    record = VerificationRecord(
+        lab_result_id=result.id,
+        original_value=original_val,
+        verified_value=verified_val,
+        action=act_enum,
+        verified_by=request.verified_by or "Reviewing Clinician",
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(result)
+
+    return result

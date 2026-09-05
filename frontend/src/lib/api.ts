@@ -16,6 +16,7 @@ import type {
   ReportResponse,
   ReportStatusUpdate,
   ReportUploadResponse,
+  VerificationRequest,
 } from '../types/api.ts'
 import { ApiError } from '../types/api.ts'
 
@@ -288,6 +289,23 @@ export async function processReport(reportId: number): Promise<ReportProcessResp
  */
 export async function getReportLabResults(reportId: number): Promise<LabResultResponse[]> {
   return apiClient.get<LabResultResponse[]>(`/api/reports/${reportId}/lab-results`)
+}
+
+/**
+ * Get all lab results across all reports for a specific patient (for timeline & conflicts)
+ */
+export async function listPatientLabResults(patientId: number): Promise<LabResultResponse[]> {
+  return apiClient.get<LabResultResponse[]>(`/api/patients/${patientId}/lab-results`)
+}
+
+/**
+ * Submit human clinical verification on an extracted lab result
+ */
+export async function verifyLabResult(
+  resultId: number,
+  payload: VerificationRequest
+): Promise<LabResultResponse> {
+  return apiClient.post<LabResultResponse>(`/api/lab-results/${resultId}/verify`, payload)
 }
 
 // ============================================================================

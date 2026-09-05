@@ -162,6 +162,13 @@ export interface LabResultResponse {
 // Alias matching domain entity
 export type LabResult = LabResultResponse
 
+export interface VerificationRequest {
+  action: 'CONFIRMED' | 'EDITED' | 'FLAGGED' | 'REJECTED' | 'OVERRIDDEN'
+  verified_value?: string
+  verified_by?: string
+  notes?: string
+}
+
 // ============================================================================
 // API Error Types
 // ============================================================================

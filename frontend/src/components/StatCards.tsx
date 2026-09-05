@@ -13,12 +13,16 @@ interface StatCardsProps {
   isLive?: boolean
   patientCount?: number
   reportCount?: number
+  pendingCount?: number
+  conflictCount?: number
 }
 
 export function StatCards({
   isLive = false,
   patientCount,
   reportCount,
+  pendingCount,
+  conflictCount,
 }: StatCardsProps) {
   const stats = isLive
     ? [
@@ -37,14 +41,14 @@ export function StatCards({
         {
           id: 'pending',
           label: 'Pending Verification',
-          value: reportCount ? 'In Queue' : 0,
+          value: pendingCount !== undefined ? pendingCount : (reportCount ? 'In Queue' : 0),
           hint: 'Awaiting human review',
         },
         {
           id: 'conflicts',
           label: 'Conflicts Detected',
-          value: 0,
-          hint: 'No clinical discrepancies detected',
+          value: conflictCount ?? 0,
+          hint: conflictCount && conflictCount > 0 ? `${conflictCount} discrepancy detected` : 'No clinical discrepancies detected',
         },
       ]
     : workspaceStats

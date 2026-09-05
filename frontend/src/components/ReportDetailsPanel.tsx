@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   FileSearch,
   Loader2,
+  Printer,
   RefreshCw,
   ScanLine,
   X,
@@ -168,6 +169,77 @@ export function ReportDetailsPanel({
       setLoadingResults(false)
       setRefreshing(false)
     }
+  }
+
+  const handleExportSummary = () => {
+    if (!activeReport) return
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    const resultsHtml = (results || [])
+      .map(
+        (r) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">${r.test_name}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${r.value} ${r.unit || ''}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${r.reference_range_text || (r.reference_low != null && r.reference_high != null ? `${r.reference_low} – ${r.reference_high}` : 'Not provided in source')}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${r.status}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${r.verification_status}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${r.source_page != null ? `Page ${r.source_page}` : '—'}</td>
+      </tr>
+    `
+      )
+      .join('')
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>MedLens Clinical Report Summary - ${activeReport.file_name}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #101c1a; padding: 24px; max-width: 800px; margin: 0 auto; }
+            h1 { font-size: 20px; margin-bottom: 4px; color: #1a5c54; }
+            .meta { font-size: 13px; color: #5a6b68; margin-bottom: 20px; line-height: 1.6; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px; }
+            th { text-align: left; padding: 8px; background: #eef2f0; border-bottom: 2px solid #c3cfcc; }
+            .disclaimer { border-top: 1px solid #d5dedb; padding-top: 12px; font-size: 11px; color: #5a6b68; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <h1>MedLens — Source-Verified Clinical Report Summary</h1>
+          <div class="meta">
+            <strong>Patient Identifier:</strong> ${patientCode || 'N/A'}<br/>
+            <strong>Source Document:</strong> ${activeReport.file_name}<br/>
+            <strong>Report Date:</strong> ${formatDisplayDate(activeReport.report_date)} | <strong>Uploaded:</strong> ${formatDisplayDate(activeReport.uploaded_at)}<br/>
+            <strong>Extraction Status:</strong> ${activeReport.extraction_status || 'Indexed'}
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Test Name</th>
+                <th>Extracted Value</th>
+                <th>Source Reference Range</th>
+                <th>Status</th>
+                <th>Verification State</th>
+                <th>Source Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${resultsHtml || '<tr><td colspan="6" style="padding: 16px; text-align: center;">No laboratory results found.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="disclaimer">
+            <strong>Safety Notice:</strong> MedLens is an information organization and review tool. It does not provide medical diagnosis or treatment recommendations. All reference ranges are strictly extracted from the source document without clinical inference.
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   return (
@@ -340,7 +412,18 @@ export function ReportDetailsPanel({
                       <div className="h-24 animate-pulse rounded-lg border border-line bg-paper" />
                     </div>
                   ) : (
-                    <LabResultsList results={results || []} />
+                    <LabResultsList
+                      results={results || []}
+                      isLive={isLive}
+                      onResultUpdated={(updated) => {
+                        setResults((prev) =>
+                          prev ? prev.map((item) => (item.id === updated.id ? updated : item)) : [updated]
+                        )
+                        if (onProcessed) {
+                          void onProcessed()
+                        }
+                      }}
+                    />
                   )}
                 </div>
               ) : loadingResults ? (
@@ -352,6 +435,17 @@ export function ReportDetailsPanel({
 
         {isLive && activeReport ? (
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">
+            {hasResults ? (
+              <button
+                type="button"
+                onClick={handleExportSummary}
+                className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-paper"
+                aria-label="Export report summary as printable document"
+              >
+                <Printer size={13} aria-hidden="true" />
+                Export Summary
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={handleClose}

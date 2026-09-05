@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   getPatient,
+  listPatientLabResults,
   listPatientReports,
   listPatients,
 } from '../lib/api.ts'
 import type {
+  LabResultResponse,
   PatientDetailResponse,
   PatientResponse,
   ReportResponse,
@@ -19,6 +21,7 @@ export interface DashboardDataState {
   selectedPatientId: number | null
   selectedPatient: PatientDetailResponse | null
   reports: ReportResponse[]
+  patientLabResults: LabResultResponse[]
   loadingPatients: boolean
   loadingDetails: boolean
   error: string | null
@@ -33,6 +36,7 @@ export function useDashboardData(): DashboardDataState {
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null)
   const [selectedPatient, setSelectedPatient] = useState<PatientDetailResponse | null>(null)
   const [reports, setReports] = useState<ReportResponse[]>([])
+  const [patientLabResults, setPatientLabResults] = useState<LabResultResponse[]>([])
   const [loadingPatients, setLoadingPatients] = useState(true)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,12 +44,14 @@ export function useDashboardData(): DashboardDataState {
   const loadPatientDetails = useCallback(async (patientId: number) => {
     setLoadingDetails(true)
     try {
-      const [detail, patientReports] = await Promise.all([
+      const [detail, patientReports, allLabResults] = await Promise.all([
         getPatient(patientId),
         listPatientReports(patientId),
+        listPatientLabResults(patientId).catch(() => []),
       ])
       setSelectedPatient(detail)
       setReports(patientReports)
+      setPatientLabResults(allLabResults)
       setError(null)
     } catch {
       setError('Failed to retrieve patient details from backend.')
@@ -76,6 +82,7 @@ export function useDashboardData(): DashboardDataState {
         setSelectedPatientId(null)
         setSelectedPatient(null)
         setReports([])
+        setPatientLabResults([])
       }
     } catch {
       setConnectionStatus('unavailable')
@@ -83,6 +90,7 @@ export function useDashboardData(): DashboardDataState {
       setSelectedPatientId(null)
       setSelectedPatient(null)
       setReports([])
+      setPatientLabResults([])
       setError('Backend service is currently unavailable. Displaying synthetic preview data.')
     } finally {
       setLoadingPatients(false)
@@ -102,13 +110,15 @@ export function useDashboardData(): DashboardDataState {
         if (patientList.length > 0) {
           const firstId = patientList[0].id
           setSelectedPatientId(firstId)
-          const [detail, patientReports] = await Promise.all([
+          const [detail, patientReports, allLabResults] = await Promise.all([
             getPatient(firstId),
             listPatientReports(firstId),
+            listPatientLabResults(firstId).catch(() => []),
           ])
           if (!active) return
           setSelectedPatient(detail)
           setReports(patientReports)
+          setPatientLabResults(allLabResults)
         }
       } catch {
         if (!active) return
@@ -145,6 +155,7 @@ export function useDashboardData(): DashboardDataState {
     selectedPatientId,
     selectedPatient,
     reports,
+    patientLabResults,
     loadingPatients,
     loadingDetails,
     error,

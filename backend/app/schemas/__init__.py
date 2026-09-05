@@ -1,3 +1,4 @@
+from app.schemas.extraction import ExtractedLabResult, ExtractedReport
 from app.schemas.patient import (
     PatientCreate,
     PatientDetailResponse,
@@ -20,4 +21,6 @@ __all__ = [
     "ReportStatusUpdate",
     "ReportResponse",
     "ReportUploadResponse",
+    "ExtractedLabResult",
+    "ExtractedReport",
 ]

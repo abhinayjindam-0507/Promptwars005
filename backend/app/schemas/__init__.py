@@ -6,7 +6,9 @@ from app.schemas.patient import (
     PatientUpdate,
 )
 from app.schemas.report import (
+    LabResultResponse,
     ReportCreate,
+    ReportProcessResponse,
     ReportResponse,
     ReportStatusUpdate,
     ReportUploadResponse,
@@ -21,6 +23,8 @@ __all__ = [
     "ReportStatusUpdate",
     "ReportResponse",
     "ReportUploadResponse",
+    "LabResultResponse",
+    "ReportProcessResponse",
     "ExtractedLabResult",
     "ExtractedReport",
 ]

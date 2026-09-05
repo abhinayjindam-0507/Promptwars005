@@ -6,13 +6,28 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.lab_result import LabResult
 from app.models.patient import Patient
 from app.models.report import ProcessingStatus, Report
 from app.schemas.report import (
+    LabResultResponse,
     ReportCreate,
+    ReportProcessResponse,
     ReportResponse,
     ReportStatusUpdate,
     ReportUploadResponse,
+)
+from app.services.extraction_service import (
+    EmptyDocumentError,
+    ExtractionError,
+    ExtractionParsingError,
+    MissingAPIKeyError,
+)
+from app.services.orchestration_service import (
+    OCRRequiredDocumentError,
+    OrchestrationError,
+    ReportNotFoundError,
+    orchestration_service,
 )
 from app.services.pdf_service import pdf_service
 from app.services.storage_service import storage_service
@@ -221,3 +236,137 @@ def update_report_status(
     db.commit()
     db.refresh(report)
     return report
+
+
+@router.post(
+    "/reports/{report_id}/process",
+    response_model=ReportProcessResponse,
+    status_code=status.HTTP_200_OK,
+)
+def process_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+) -> ReportProcessResponse:
+    """Trigger clinical extraction, provenance validation, classification, and persistence for an uploaded report."""
+    # 1. Verify report exists
+    report = db.execute(select(Report).where(Report.id == report_id)).scalar_one_or_none()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    # 2. Verify stored PDF file exists
+    if not report.storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report {report_id} has no associated storage key.",
+        )
+    pdf_path = storage_service.get_file_path(report.storage_key)
+    if not pdf_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stored PDF document for report {report_id} not found on disk.",
+        )
+
+    # 3. Clean rejection for OCR_REQUIRED / non-extractable documents
+    if report.extraction_status == "OCR_REQUIRED" or not report.extracted_text_available:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Report {report_id} requires OCR. Cannot perform selectable text extraction on scanned/blank documents.",
+        )
+
+    # 4. Trigger orchestration pipeline
+    try:
+        orch_result = orchestration_service.process_report_extraction(
+            report_id=report.id,
+            db=db,
+        )
+    except ReportNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except OCRRequiredDocumentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except EmptyDocumentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except MissingAPIKeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI extraction service is not configured (OpenAI API key missing).",
+        ) from exc
+    except ExtractionParsingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI clinical extraction service failed: {exc}",
+        ) from exc
+    except ExtractionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"AI clinical extraction error: {exc}",
+        ) from exc
+    except OrchestrationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected error occurred during report processing.",
+        ) from exc
+
+    # 5. Fetch persisted lab results
+    db.refresh(report)
+    persisted_results = db.execute(
+        select(LabResult)
+        .where(LabResult.report_id == report.id)
+        .order_by(LabResult.source_page.asc().nulls_last(), LabResult.id.asc())
+    ).scalars().all()
+
+    return ReportProcessResponse(
+        report_id=report.id,
+        patient_id=report.patient_id,
+        processing_status=report.processing_status,
+        extraction_status=report.extraction_status or "AI_EXTRACTION_COMPLETED",
+        persisted_results_count=orch_result.persisted_results_count,
+        provenance_passed_count=orch_result.provenance_passed_count,
+        provenance_flagged_count=orch_result.provenance_flagged_count,
+        lab_results=list(persisted_results),
+        message=f"Report processed successfully: {orch_result.persisted_results_count} lab results extracted.",
+    )
+
+
+@router.get(
+    "/reports/{report_id}/lab-results",
+    response_model=List[LabResultResponse],
+    status_code=status.HTTP_200_OK,
+)
+def get_report_lab_results(
+    report_id: int,
+    db: Session = Depends(get_db),
+) -> List[LabResult]:
+    """Retrieve structured clinical lab results persisted for an individual report."""
+    report = db.execute(
+        select(Report).where(Report.id == report_id)
+    ).scalar_one_or_none()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    results = db.execute(
+        select(LabResult)
+        .where(LabResult.report_id == report_id)
+        .order_by(LabResult.source_page.asc().nulls_last(), LabResult.id.asc())
+    ).scalars().all()
+
+    return list(results)

@@ -1,8 +1,9 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models.lab_result import LabResultStatus, VerificationStatus
 from app.models.report import ProcessingStatus
 
 
@@ -70,3 +71,47 @@ class ReportUploadResponse(BaseModel):
         if isinstance(v, datetime):
             return v.date()
         return v
+
+
+class LabResultResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    patient_id: int
+    report_id: Optional[int] = None
+    test_name: str
+    value: str
+    numeric_value: Optional[float] = None
+    unit: Optional[str] = None
+    reference_low: Optional[float] = None
+    reference_high: Optional[float] = None
+    reference_range_text: Optional[str] = None
+    status: LabResultStatus
+    observation: Optional[str] = None
+    test_date: Optional[date] = None
+    extraction_confidence: Optional[float] = None
+    verification_status: VerificationStatus
+    source_page: Optional[int] = None
+    source_text: Optional[str] = None
+    created_at: datetime
+
+    @field_validator("test_date", mode="before")
+    @classmethod
+    def coerce_date(cls, v):
+        if isinstance(v, datetime):
+            return v.date()
+        return v
+
+
+class ReportProcessResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    report_id: int
+    patient_id: int
+    processing_status: ProcessingStatus
+    extraction_status: str
+    persisted_results_count: int
+    provenance_passed_count: int
+    provenance_flagged_count: int
+    lab_results: List[LabResultResponse]
+    message: str

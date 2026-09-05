@@ -24,7 +24,13 @@ import { ApiError } from '../types/api.ts'
 // Configuration
 // ============================================================================
 
-const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '')
+const API_BASE_URL = (
+  import.meta.env?.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : typeof window !== 'undefined' && window.location?.origin
+      ? ''
+      : 'http://localhost:8000'
+).replace(/\/+$/, '')
 
 // ============================================================================
 // Core API Client

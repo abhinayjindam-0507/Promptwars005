@@ -23,6 +23,7 @@ export interface DashboardDataState {
   loadingDetails: boolean
   error: string | null
   refetch: () => Promise<void>
+  refreshReports: () => Promise<void>
   selectPatient: (id: number) => Promise<void>
 }
 
@@ -127,6 +128,14 @@ export function useDashboardData(): DashboardDataState {
     }
   }, [])
 
+  const refreshReports = useCallback(async () => {
+    if (selectedPatientId !== null) {
+      await loadPatientDetails(selectedPatientId)
+    } else {
+      await refetch()
+    }
+  }, [selectedPatientId, loadPatientDetails, refetch])
+
   const isLive = connectionStatus === 'connected' && patients.length > 0 && selectedPatient !== null
 
   return {
@@ -140,6 +149,7 @@ export function useDashboardData(): DashboardDataState {
     loadingDetails,
     error,
     refetch,
+    refreshReports,
     selectPatient,
   }
 }

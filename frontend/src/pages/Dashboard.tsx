@@ -22,6 +22,7 @@ export function Dashboard() {
     loadingDetails,
     error,
     refetch,
+    refreshReports,
     selectPatient,
   } = useDashboardData()
 
@@ -64,7 +65,13 @@ export function Dashboard() {
         <VerificationQueue />
       </div>
       <ActivityTimeline />
-      <UploadNotice open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadNotice
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        selectedPatient={selectedPatient}
+        isLive={isLive}
+        onUploadSuccess={refreshReports}
+      />
     </div>
   )
 }

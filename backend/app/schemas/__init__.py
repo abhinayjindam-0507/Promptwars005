@@ -8,6 +8,7 @@ from app.schemas.report import (
     ReportCreate,
     ReportResponse,
     ReportStatusUpdate,
+    ReportUploadResponse,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "ReportCreate",
     "ReportStatusUpdate",
     "ReportResponse",
+    "ReportUploadResponse",
 ]

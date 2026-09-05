@@ -38,6 +38,31 @@ class ReportResponse(BaseModel):
     report_date: Optional[date] = None
     uploaded_at: datetime
     processing_status: ProcessingStatus
+    page_count: Optional[int] = None
+    extracted_text_available: bool = False
+    extraction_status: Optional[str] = None
+
+    @field_validator("report_date", mode="before")
+    @classmethod
+    def coerce_date(cls, v):
+        if isinstance(v, datetime):
+            return v.date()
+        return v
+
+
+class ReportUploadResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    report_id: int
+    patient_id: int
+    file_name: str
+    report_date: Optional[date] = None
+    processing_status: ProcessingStatus
+    extraction_status: str
+    page_count: int
+    extracted_text_available: bool
+    uploaded_at: datetime
+    message: str
 
     @field_validator("report_date", mode="before")
     @classmethod

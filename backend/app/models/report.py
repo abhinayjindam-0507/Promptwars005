@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -30,6 +30,7 @@ class Report(Base):
         index=True,
     )
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    storage_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     report_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     uploaded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -41,6 +42,14 @@ class Report(Base):
         default=ProcessingStatus.PENDING,
         nullable=False,
     )
+    page_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    extracted_text_available: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    extraction_status: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        default="PENDING",
+        nullable=True,
+    )
+    extracted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     patient: Mapped["Patient"] = relationship("Patient", back_populates="reports")

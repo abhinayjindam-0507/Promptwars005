@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Times New Roman', serif;
+
+  --color-ink: #101c1a;
+  --color-ink-soft: #2c3f3c;
+  --color-slate-body: #5a6b68;
+  --color-paper: #eef2f0;
+  --color-paper-deep: #e4ebe8;
+  --color-surface: #fbfcfb;
+  --color-line: #d5dedb;
+  --color-line-strong: #c3cfcc;
+  --color-teal: #1a5c54;
+  --color-teal-bright: #22756b;
+  --color-teal-mist: #dceae7;
+  --color-amber: #8a6b2e;
+  --color-amber-mist: #f3ead6;
+  --color-rose: #8a3d3d;
+  --color-rose-mist: #f3e4e4;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  max-width: none;
+  text-align: initial;
+  border: 0;
+  min-height: 100svh;
+  display: block;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.paper-grid {
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.2)),
+    linear-gradient(rgb(16 28 26 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(16 28 26 / 0.035) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}

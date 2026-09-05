@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.patients import router as patients_router
+from app.api.reports import router as reports_router
 from app.core.database import init_db
 
 
@@ -26,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register domain API routers
+app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
+app.include_router(reports_router, prefix="/api", tags=["Reports"])
 
 
 @app.get("/")

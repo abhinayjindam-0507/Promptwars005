@@ -1,1 +1,5 @@
 """Core module for MedLens backend application."""
+
+from app.core.config import Settings, get_settings, settings
+
+__all__ = ["Settings", "get_settings", "settings"]

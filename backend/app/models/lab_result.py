@@ -19,6 +19,9 @@ class LabResultStatus(str, enum.Enum):
     CRITICAL = "CRITICAL"
     INCONCLUSIVE = "INCONCLUSIVE"
     PENDING = "PENDING"
+    LOW = "LOW"
+    HIGH = "HIGH"
+    UNDETERMINED = "UNDETERMINED"
 
 
 class VerificationStatus(str, enum.Enum):

@@ -9,11 +9,50 @@ const icons: Record<string, LucideIcon> = {
   conflicts: AlertCircle,
 }
 
-export function StatCards() {
+interface StatCardsProps {
+  isLive?: boolean
+  patientCount?: number
+  reportCount?: number
+}
+
+export function StatCards({
+  isLive = false,
+  patientCount,
+  reportCount,
+}: StatCardsProps) {
+  const stats = isLive
+    ? [
+        {
+          id: 'patients',
+          label: 'Patients',
+          value: patientCount ?? 0,
+          hint: 'Registered in database',
+        },
+        {
+          id: 'reports',
+          label: 'Reports on Record',
+          value: reportCount ?? 0,
+          hint: 'Documents indexed for patient',
+        },
+        {
+          id: 'pending',
+          label: 'Pending Verification',
+          value: reportCount ? 'In Queue' : 0,
+          hint: 'Awaiting human review',
+        },
+        {
+          id: 'conflicts',
+          label: 'Conflicts Detected',
+          value: 0,
+          hint: 'No clinical discrepancies detected',
+        },
+      ]
+    : workspaceStats
+
   return (
     <section aria-label="Workspace statistics">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {workspaceStats.map((stat) => {
+        {stats.map((stat) => {
           const Icon = icons[stat.id] ?? Users
           return (
             <article

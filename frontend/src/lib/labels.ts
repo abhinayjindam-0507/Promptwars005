@@ -30,3 +30,28 @@ export const statusStyles: Record<VerificationStatus, string> = {
   conflict: 'bg-rose-mist text-rose',
   in_validation: 'bg-paper-deep text-ink-soft',
 }
+
+export function formatDisplayDate(dateStr?: string | null): string {
+  if (!dateStr) return '—'
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  } catch {
+    return dateStr
+  }
+}
+
+export function mapProcessingStatusToVerification(status?: string | null): VerificationStatus {
+  switch (status) {
+    case 'COMPLETED':
+      return 'verified'
+    case 'PROCESSING':
+      return 'in_validation'
+    case 'FAILED':
+      return 'conflict'
+    case 'PENDING':
+    default:
+      return 'pending_review'
+  }
+}
